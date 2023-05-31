@@ -61,6 +61,28 @@ public class RegexpExtractTest {
   }
 
   @Test
+  public void schemalessWithKey(){
+    final Map<String, String> props = new HashMap<>();
+    props.put("source.field.name", "source");
+    props.put("useKey","true");
+    props.put("destination.field.name", "destination");
+    props.put("pattern", "(?<=primary_key=)\\d+");
+    props.put("occurrence", "1");
+    props.put("case.sensitive", "false");
+
+    xform.configure(props);
+
+    final Map<String, Object> value = new HashMap<>();
+    value.put("source", "whatever");
+
+    final SinkRecord record = new SinkRecord("test", 0, null, "Struct{table=XE.MYUSER.AGDA,column=MYCLOB,primary_key=3}", null, value, 0);
+    final SinkRecord transformedRecord = xform.apply(record);
+
+    final Map updatedValue = (Map) transformedRecord.value();
+    assertEquals("3", updatedValue.get("destination"));
+  }
+
+  @Test
   public void schemalessNoMatch() {
     final Map<String, String> props = new HashMap<>();
     props.put("source.field.name", "source");

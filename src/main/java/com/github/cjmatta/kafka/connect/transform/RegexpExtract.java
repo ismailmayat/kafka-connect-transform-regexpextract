@@ -31,6 +31,8 @@ public abstract class RegexpExtract<R extends ConnectRecord<R>> implements Trans
     String DESTINATION_FIELD_NAME = "destination.field.name";
     String MATCH_OCCURRENCE = "occurrence";
     String CASE_SENSITIVE = "case.sensitive";
+
+    String USE_KEY = "useKey";
   }
 
   public static final ConfigDef CONFIG_DEF = new ConfigDef()
@@ -43,7 +45,9 @@ public abstract class RegexpExtract<R extends ConnectRecord<R>> implements Trans
           .define(ConfigName.MATCH_OCCURRENCE, ConfigDef.Type.INT, 1, ConfigDef.Importance.MEDIUM,
       "Match occurrence, defaults to the first match")
           .define(ConfigName.CASE_SENSITIVE, ConfigDef.Type.BOOLEAN, true, ConfigDef.Importance.MEDIUM,
-                  "Match case sensitive, defaults to true");
+                  "Match case sensitive, defaults to true")
+          .define(ConfigName.USE_KEY,ConfigDef.Type.BOOLEAN,false, ConfigDef.Importance.MEDIUM,"Use key as source, defaults to false")
+          ;
 
   private static final String PURPOSE = "extract substring using a regular expression";
 
@@ -54,6 +58,8 @@ public abstract class RegexpExtract<R extends ConnectRecord<R>> implements Trans
   private Boolean caseSensitive;
   private Cache<Schema, Schema> schemaUpdateCache;
 
+  private Boolean useKey = false;
+
   @Override
   public void configure(Map<String, ?> props) {
     final SimpleConfig config = new SimpleConfig(CONFIG_DEF, props);
@@ -63,6 +69,7 @@ public abstract class RegexpExtract<R extends ConnectRecord<R>> implements Trans
     occurrence = config.getInt(ConfigName.MATCH_OCCURRENCE);
     caseSensitive = config.getBoolean(ConfigName.CASE_SENSITIVE);
     schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
+    useKey = config.getBoolean(ConfigName.USE_KEY);
   }
 
   @Override
@@ -79,7 +86,15 @@ public abstract class RegexpExtract<R extends ConnectRecord<R>> implements Trans
 
     final Map<String, Object> updatedValue = new HashMap<>(value);
 
-    String matched = getRegexpMatch(value.get(sourceFieldName).toString(), pattern);
+    String matched = "";
+
+    if(useKey){
+      matched = getRegexpMatch(record.key().toString(),pattern);
+    }
+    else{
+      matched = getRegexpMatch(value.get(sourceFieldName).toString(), pattern);
+    }
+
     updatedValue.put(destinationFieldName, matched);
 
     return newRecord(record, null, updatedValue);
